@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IL Terminal Operator Dashboard — May 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white;
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .header-left h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+  .header-left p { font-size: 13px; color: #a0b4d0; margin-top: 4px; }
+  .header-right { display: flex; gap: 20px; }
+  .stat-card {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .stat-card .val { font-size: 20px; font-weight: 700; color: #e8f4fd; }
+  .stat-card .lbl { font-size: 10px; color: #a0b4d0; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .ll-banner {
+    background: linear-gradient(90deg, #c8a200 0%, #f5c518 40%, #c8a200 100%);
+    color: #1a1a2e;
+    padding: 10px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-weight: 600;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .ll-banner span { display: flex; align-items: center; gap: 6px; }
+  .ll-banner .badge {
+    background: #1a1a2e;
+    color: #f5c518;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .controls {
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: white;
+    border-bottom: 1px solid #e0e6ef;
+  }
+  .controls label { font-size: 13px; font-weight: 600; color: #555; }
+  .controls input[type=text] {
+    border: 1px solid #cdd6e0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    width: 220px;
+    outline: none;
+  }
+  .controls input[type=text]:focus { border-color: #0f3460; }
+  .controls .note { margin-left: auto; font-size: 12px; color: #888; }
+  .sort-hint { font-size: 12px; color: #888; }
+  .unlinked-btn {
+    margin-left: auto;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .unlinked-btn:hover { background: #c0392b; }
+
+  .table-wrap {
+    padding: 0 32px 32px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    font-size: 12.5px;
+    margin-top: 16px;
+    min-width: 1600px;
+  }
+  thead tr {
+    background: #1a1a2e;
+    color: white;
+  }
+  thead th {
+    padding: 10px 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+  }
+  thead th:first-child { text-align: left; min-width: 200px; }
+  thead th:hover { background: #0f3460; }
+  thead th .sort-arrow { margin-left: 4px; opacity: 0.5; font-size: 10px; }
+  thead th.sorted .sort-arrow { opacity: 1; color: #f5c518; }
+
+  tbody tr {
+    border-bottom: 1px solid #eef1f6;
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: #f5f9ff; }
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody tr.lucky-lincoln {
+    background: linear-gradient(90deg, #fffde7 0%, #fff9c4 100%);
+    border-left: 4px solid #f5c518;
+    font-weight: 600;
+  }
+  tbody tr.lucky-lincoln:hover { background: #fff8b0; }
+
+  td {
+    padding: 9px 10px;
+    text-align: right;
+    border-right: 1px solid #eef1f6;
+    white-space: nowrap;
+  }
+  td:first-child { text-align: left; font-weight: 500; }
+  td.rank { font-weight: 700; }
+  td.rank-1 { color: #c8a200; }
+  td.rank-2 { color: #7f8c8d; }
+  td.rank-3 { color: #cd6e3b; }
+  td.rank-top { color: #27ae60; }
+
+  .pct-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .pct-bar { height: 6px; border-radius: 3px; background: #e0e6ef; flex: 0 0 50px; overflow: hidden; }
+  .pct-bar-fill { height: 100%; border-radius: 3px; background: #0f3460; }
+  .lucky-lincoln .pct-bar-fill { background: #c8a200; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+  .modal h2 { font-size: 16px; margin-bottom: 4px; color: #e74c3c; }
+  .modal p { font-size: 12px; color: #888; margin-bottom: 16px; }
+  .modal table { min-width: unset; font-size: 12px; }
+  .modal thead tr { background: #e74c3c; }
+  .modal-close {
+    float: right;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #888;
+    margin-top: -4px;
+  }
+
+  .footer { text-align: center; padding: 16px; font-size: 11px; color: #aaa; }
+
+  .tabs { display:flex; gap:0; background:#1a1a2e; padding:0 32px; }
+  .tab-btn {
+    padding:12px 28px; background:none; border:none; color:#a0b4d0;
+    font-size:13px; font-weight:600; cursor:pointer; border-bottom:3px solid transparent;
+    transition:all 0.2s; letter-spacing:0.3px;
+  }
+  .tab-btn.active { color:#f5c518; border-bottom-color:#f5c518; }
+  .tab-btn:hover:not(.active) { color:white; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  .summary-wrap { padding:24px 32px 32px; }
+  .summary-wrap h2 { font-size:15px; font-weight:700; color:#1a1a2e; margin-bottom:4px; }
+  .summary-wrap p.sub { font-size:12px; color:#888; margin-bottom:24px; }
+  .chart-section { background:white; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.08); padding:20px 24px 24px; margin-bottom:24px; }
+  .chart-section h3 { font-size:13px; font-weight:700; color:#1a1a2e; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.4px; }
+  .chart-section p.chart-sub { font-size:11px; color:#999; margin-bottom:16px; }
+  .chart-canvas-wrap { position:relative; height:320px; }
+
+  .summary-table {
+    width:100%; border-collapse:collapse; background:white;
+    border-radius:12px; overflow:hidden;
+    box-shadow:0 2px 16px rgba(0,0,0,0.08);
+    font-size:12px; min-width:900px;
+  }
+  .summary-table thead tr:first-child { background:#1a1a2e; color:white; }
+  .summary-table thead tr:first-child th {
+    padding:10px 12px; font-size:11px; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.4px; text-align:center;
+    border-right:1px solid rgba(255,255,255,0.1);
+  }
+  .summary-table thead tr:first-child th:first-child { text-align:left; min-width:210px; }
+  .summary-table thead tr.metric-row { background:#16213e; color:#a0b4d0; }
+  .summary-table thead tr.metric-row th {
+    padding:6px 8px; font-size:10px; font-weight:500;
+    text-transform:uppercase; letter-spacing:0.3px; text-align:center;
+    border-right:1px solid rgba(255,255,255,0.06);
+  }
+  .summary-table thead tr.metric-row th:first-child { text-align:left; }
+
+  .summary-table tbody tr { border-bottom:1px solid #eef1f6; }
+  .summary-table tbody tr:hover { background:#f5f9ff; }
+  .summary-table tbody tr:last-child { border-bottom:none; }
+  .summary-table tbody tr.lucky-lincoln { background:linear-gradient(90deg,#fffde7,#fff9c4); border-left:4px solid #f5c518; font-weight:600; }
+  .summary-table tbody tr.lucky-lincoln:hover { background:#fff8b0; }
+
+  .summary-table td {
+    padding:8px 10px; text-align:right;
+    border-right:1px solid #eef1f6; white-space:nowrap;
+  }
+  .summary-table td:first-child { text-align:left; font-weight:500; padding-left:12px; }
+  .summary-table td.rank-label { color:#888; font-size:11px; font-weight:400; }
+  .mom-pos { color:#27ae60; font-weight:700; }
+  .mom-neg { color:#e74c3c; font-weight:700; }
+  .mom-neu { color:#888; }
+  .month-group { border-right:2px solid #c8d6e5 !important; }
+  .nti-val { font-weight:600; }
+
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('master')">Master</button>
+  <button class="tab-btn" onclick="switchTab('summary')">Summary</button>
+</div>
+<div id="panel-master" class="tab-panel active">
+<div class="header">
+  <div class="header-left">
+    <h1>🎰 Illinois Terminal Operator Performance Dashboard</h1>
+    <p>May 2026 &nbsp;·&nbsp; Source: Illinois Gaming Board — Video Gaming Monthly Revenue Report</p>
+  </div>
+  <div class="header-right">
+    <div class="stat-card">
+      <div class="val" id="mkt-locs">—</div>
+      <div class="lbl">Market Locations</div>
+    </div>
+    <div class="stat-card">
+      <div class="val" id="mkt-vgts">—</div>
+      <div class="lbl">Market VGTs</div>
+    </div>
+    <div class="stat-card">
+      <div class="val" id="mkt-nti">—</div>
+      <div class="lbl">Market NTI</div>
+    </div>
+    <div class="stat-card">
+      <div class="val" id="to-count">—</div>
+      <div class="lbl">Active TOs</div>
+    </div>
+  </div>
+</div>
+
+<div class="ll-banner">
+  <span>⭐ Lucky Lincoln Gaming, LLC</span>
+  <span>NTI Rank: <span class="badge" id="ll-nti-rank">—</span></span>
+  <span>WPUPD Rank: <span class="badge" id="ll-wpupd-rank">—</span></span>
+  <span>NPL Rank: <span class="badge" id="ll-npl-rank">—</span></span>
+  <span>Total NTI: <span class="badge" id="ll-nti">—</span></span>
+  <span>WPUPD: <span class="badge" id="ll-wpupd">—</span></span>
+  <span>Locations: <span class="badge" id="ll-locs">—</span></span>
+</div>
+
+<div class="controls">
+  <label>Search TO:</label>
+  <input type="text" id="search" placeholder="Filter by operator name…" oninput="renderTable()">
+  <span class="sort-hint">Click any column header to sort</span>
+
+</div>
+
+<div class="table-wrap">
+<table id="main-table">
+  <thead>
+    <tr>
+      <th onclick="sortBy('to_name')" data-col="to_name">Terminal Operator Name <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('loc_count')" data-col="loc_count">Location Count <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('loc_count_wpupd_gt100')" data-col="loc_count_wpupd_gt100">Locs WPUPD&gt;100 <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('total_amount_played')" data-col="total_amount_played">Total Amt Played <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('total_nti')" data-col="total_nti">Total NTI <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('wpupd')" data-col="wpupd">WPUPD <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('nti_per_location')" data-col="nti_per_location">NTI / Location <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('hold_pct')" data-col="hold_pct">Hold % <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('avg_vgts_per_location')" data-col="avg_vgts_per_location">Avg VGTs / Loc <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('nti_rank')" data-col="nti_rank">NTI Rank <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('wpupd_rank')" data-col="wpupd_rank">WPUPD Rank <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('npl_rank')" data-col="npl_rank">NPL Rank <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('pct_market_locations')" data-col="pct_market_locations">% Mkt Locations <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('pct_market_vgts')" data-col="pct_market_vgts">% Mkt VGTs <span class="sort-arrow">↕</span></th>
+      <th onclick="sortBy('pct_market_nti')" data-col="pct_market_nti">% Mkt NTI <span class="sort-arrow">↕</span></th>
+    </tr>
+  </thead>
+  <tbody id="table-body"></tbody>
+</table>
+</div>
+
+<!-- Unlinked modal -->
+<div class="modal-overlay" id="unlinked-modal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('unlinked-modal').classList.remove('active')">✕</button>
+    <h2>⚠️ Unlinked Locations (2)</h2>
+    <p>27 of the original 29 unlinked licenses were resolved across 6 EstablishmentLinkTO snapshots (04/15–06/12/2026). The 2 below could not be matched in any snapshot and are excluded from all metrics. They likely had no active TO assignment during May 2026.</p>
+    <table>
+      <thead><tr><th style="text-align:left;padding:6px 8px">Municipality</th><th style="text-align:left;padding:6px 8px">Establishment</th><th style="text-align:left;padding:6px 8px">License #</th></tr></thead>
+      <tbody id="unlinked-body"></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<div id="panel-summary" class="tab-panel">
+  <div class="summary-wrap">
+    <h2>Monthly NTI Trend — Top 10 Terminal Operators by May 2026 NTI</h2>
+    <p class="sub">Jan – May 2026 · Ranked by May 2026 NTI · Market MoM % = overall IL market NTI change vs. prior month</p>
+
+    <div class="chart-section">
+      <h3>Lucky Lincoln Gaming — NTI &amp; Market Share</h3>
+      <p class="chart-sub">Total NTI (left axis) vs. % Market NTI (right axis)</p>
+      <div class="chart-canvas-wrap"><canvas id="chart-ll"></canvas></div>
+    </div>
+
+    <div class="chart-section">
+      <h3>Total NTI</h3>
+      <p class="chart-sub">Monthly Net Terminal Income ($)</p>
+      <div class="chart-canvas-wrap"><canvas id="chart-nti"></canvas></div>
+    </div>
+
+    <div class="chart-section">
+      <h3>% Market NTI</h3>
+      <p class="chart-sub">Each TO's share of total IL market NTI (%)</p>
+      <div class="chart-canvas-wrap"><canvas id="chart-pct"></canvas></div>
+    </div>
+
+    <div class="chart-section">
+      <h3>Total Market NTI</h3>
+      <p class="chart-sub">Overall IL market Net Terminal Income ($) — all TOs combined</p>
+      <div class="chart-canvas-wrap"><canvas id="chart-mkt"></canvas></div>
+    </div>
+
+    <div class="chart-section">
+      <h3>Market MoM NTI Change %</h3>
+      <p class="chart-sub">Overall IL market total NTI change vs. prior month (same value for all TOs)</p>
+      <div class="chart-canvas-wrap"><canvas id="chart-mom"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Data: Illinois Gaming Board · May 2026 · 31 days · WPUPD = Net Wager ÷ VGT Count ÷ 31</div>
+
+<script>
+const RAW = {"records": [{"to_name": "J&J Ventures Gaming, LLC", "loc_count": 2547, "loc_count_wpupd_gt100": 1687, "total_amount_played": 1007789357.15, "total_nti": 89382315.87, "wpupd": 198.09, "nti_per_location": 35093.17, "hold_pct": 8.8689, "nti_rank": 1, "wpupd_rank": 39, "npl_rank": 39, "avg_vgts_per_location": 5.71, "pct_market_locations": 29.3163, "pct_market_vgts": 29.4546, "pct_market_nti": 29.8736, "total_vgts": 14555}, {"to_name": "Accel Entertainment Gaming, LLC", "loc_count": 2648, "loc_count_wpupd_gt100": 1577, "total_amount_played": 895402234.45, "total_nti": 83175509.05, "wpupd": 175.83, "nti_per_location": 31410.69, "hold_pct": 9.2892, "nti_rank": 2, "wpupd_rank": 44, "npl_rank": 42, "avg_vgts_per_location": 5.76, "pct_market_locations": 30.4788, "pct_market_vgts": 30.8813, "pct_market_nti": 27.7992, "total_vgts": 15260}, {"to_name": "Gold Rush Amusements, Inc.", "loc_count": 729, "loc_count_wpupd_gt100": 518, "total_amount_played": 300372221.41, "total_nti": 28327971.83, "wpupd": 218.93, "nti_per_location": 38858.67, "hold_pct": 9.4312, "nti_rank": 3, "wpupd_rank": 31, "npl_rank": 32, "avg_vgts_per_location": 5.73, "pct_market_locations": 8.3909, "pct_market_vgts": 8.4468, "pct_market_nti": 9.4679, "total_vgts": 4174}, {"to_name": "Illinois Gaming Investors LLC", "loc_count": 403, "loc_count_wpupd_gt100": 251, "total_amount_played": 130363593.26, "total_nti": 12307616.58, "wpupd": 174.58, "nti_per_location": 30539.99, "hold_pct": 9.4404, "nti_rank": 4, "wpupd_rank": 45, "npl_rank": 44, "avg_vgts_per_location": 5.64, "pct_market_locations": 4.6386, "pct_market_vgts": 4.6018, "pct_market_nti": 4.1135, "total_vgts": 2274}, {"to_name": "Lucky Lincoln Gaming, LLC", "loc_count": 248, "loc_count_wpupd_gt100": 179, "total_amount_played": 106058746.43, "total_nti": 9926100.25, "wpupd": 221.11, "nti_per_location": 40024.6, "hold_pct": 9.3584, "nti_rank": 5, "wpupd_rank": 30, "npl_rank": 30, "avg_vgts_per_location": 5.84, "pct_market_locations": 2.8545, "pct_market_vgts": 2.9303, "pct_market_nti": 3.3175, "total_vgts": 1448}, {"to_name": "Eureka Entertainment, LLC", "loc_count": 421, "loc_count_wpupd_gt100": 216, "total_amount_played": 98526873.74, "total_nti": 9895818.59, "wpupd": 142.37, "nti_per_location": 23505.51, "hold_pct": 10.0426, "nti_rank": 6, "wpupd_rank": 53, "npl_rank": 55, "avg_vgts_per_location": 5.33, "pct_market_locations": 4.8458, "pct_market_vgts": 4.5371, "pct_market_nti": 3.3074, "total_vgts": 2242}, {"to_name": "Midwest SRO, LLC", "loc_count": 113, "loc_count_wpupd_gt100": 113, "total_amount_played": 104938426.53, "total_nti": 9597119.92, "wpupd": 457.28, "nti_per_location": 84930.26, "hold_pct": 9.1453, "nti_rank": 7, "wpupd_rank": 2, "npl_rank": 2, "avg_vgts_per_location": 5.99, "pct_market_locations": 1.3006, "pct_market_vgts": 1.37, "pct_market_nti": 3.2076, "total_vgts": 677}, {"to_name": "Midwest Electronics Gaming, LLC", "loc_count": 314, "loc_count_wpupd_gt100": 203, "total_amount_played": 101602149.46, "total_nti": 9564829.01, "wpupd": 184.75, "nti_per_location": 30461.24, "hold_pct": 9.4138, "nti_rank": 8, "wpupd_rank": 42, "npl_rank": 45, "avg_vgts_per_location": 5.32, "pct_market_locations": 3.6142, "pct_market_vgts": 3.3795, "pct_market_nti": 3.1968, "total_vgts": 1670}, {"to_name": "Lattner Entertainment Group Illinois, LLC", "loc_count": 186, "loc_count_wpupd_gt100": 86, "total_amount_played": 47936785.48, "total_nti": 4141133.97, "wpupd": 130.58, "nti_per_location": 22264.16, "hold_pct": 8.6387, "nti_rank": 9, "wpupd_rank": 57, "npl_rank": 57, "avg_vgts_per_location": 5.5, "pct_market_locations": 2.1409, "pct_market_vgts": 2.0702, "pct_market_nti": 1.3841, "total_vgts": 1023}, {"to_name": "Lucky Street Gaming LLC", "loc_count": 60, "loc_count_wpupd_gt100": 57, "total_amount_played": 35849499.28, "total_nti": 3719771.72, "wpupd": 313.55, "nti_per_location": 61996.2, "hold_pct": 10.3844, "nti_rank": 10, "wpupd_rank": 9, "npl_rank": 6, "avg_vgts_per_location": 6.38, "pct_market_locations": 0.6906, "pct_market_vgts": 0.7751, "pct_market_nti": 1.2432, "total_vgts": 383}, {"to_name": "T's Gaming, LLC", "loc_count": 101, "loc_count_wpupd_gt100": 70, "total_amount_played": 38773632.45, "total_nti": 3367321.51, "wpupd": 189.24, "nti_per_location": 33339.82, "hold_pct": 8.6844, "nti_rank": 11, "wpupd_rank": 41, "npl_rank": 41, "avg_vgts_per_location": 5.68, "pct_market_locations": 1.1625, "pct_market_vgts": 1.1616, "pct_market_nti": 1.1254, "total_vgts": 574}, {"to_name": "Empire Gaming, LLC", "loc_count": 67, "loc_count_wpupd_gt100": 59, "total_amount_played": 29942293.84, "total_nti": 3150907.4, "wpupd": 249.73, "nti_per_location": 47028.47, "hold_pct": 10.523, "nti_rank": 12, "wpupd_rank": 25, "npl_rank": 22, "avg_vgts_per_location": 6.07, "pct_market_locations": 0.7712, "pct_market_vgts": 0.8236, "pct_market_nti": 1.0531, "total_vgts": 407}, {"to_name": "Elite Gaming, LLC", "loc_count": 65, "loc_count_wpupd_gt100": 49, "total_amount_played": 30435988.25, "total_nti": 2895021.64, "wpupd": 241.27, "nti_per_location": 44538.79, "hold_pct": 9.5103, "nti_rank": 13, "wpupd_rank": 26, "npl_rank": 27, "avg_vgts_per_location": 5.95, "pct_market_locations": 0.7482, "pct_market_vgts": 0.7832, "pct_market_nti": 0.9676, "total_vgts": 387}, {"to_name": "Action Video Gaming, LLC", "loc_count": 46, "loc_count_wpupd_gt100": 37, "total_amount_played": 21732695.0, "total_nti": 2289637.95, "wpupd": 269.54, "nti_per_location": 49774.74, "hold_pct": 10.5346, "nti_rank": 14, "wpupd_rank": 18, "npl_rank": 18, "avg_vgts_per_location": 5.96, "pct_market_locations": 0.5295, "pct_market_vgts": 0.5545, "pct_market_nti": 0.7653, "total_vgts": 274}, {"to_name": "Lucky Day LLC", "loc_count": 35, "loc_count_wpupd_gt100": 33, "total_amount_played": 21181802.55, "total_nti": 2111208.97, "wpupd": 325.85, "nti_per_location": 60320.26, "hold_pct": 9.9669, "nti_rank": 15, "wpupd_rank": 7, "npl_rank": 8, "avg_vgts_per_location": 5.97, "pct_market_locations": 0.4029, "pct_market_vgts": 0.4229, "pct_market_nti": 0.7056, "total_vgts": 209}, {"to_name": "Heck Gaming, LLC", "loc_count": 104, "loc_count_wpupd_gt100": 44, "total_amount_played": 16762508.21, "total_nti": 1787370.33, "wpupd": 133.77, "nti_per_location": 17186.25, "hold_pct": 10.6627, "nti_rank": 16, "wpupd_rank": 55, "npl_rank": 63, "avg_vgts_per_location": 4.14, "pct_market_locations": 1.1971, "pct_market_vgts": 0.8722, "pct_market_nti": 0.5974, "total_vgts": 431}, {"to_name": "Gaming Productions, LLC", "loc_count": 31, "loc_count_wpupd_gt100": 27, "total_amount_played": 18095906.95, "total_nti": 1762997.23, "wpupd": 312.47, "nti_per_location": 56870.88, "hold_pct": 9.7424, "nti_rank": 17, "wpupd_rank": 10, "npl_rank": 11, "avg_vgts_per_location": 5.87, "pct_market_locations": 0.3568, "pct_market_vgts": 0.3683, "pct_market_nti": 0.5892, "total_vgts": 182}, {"to_name": "Sinbad's Castle Arcade, Ltd.", "loc_count": 30, "loc_count_wpupd_gt100": 29, "total_amount_played": 17694565.26, "total_nti": 1655478.05, "wpupd": 303.42, "nti_per_location": 55182.6, "hold_pct": 9.3559, "nti_rank": 18, "wpupd_rank": 12, "npl_rank": 13, "avg_vgts_per_location": 5.87, "pct_market_locations": 0.3453, "pct_market_vgts": 0.3562, "pct_market_nti": 0.5533, "total_vgts": 176}, {"to_name": "Hyperactive Gaming, LLC", "loc_count": 36, "loc_count_wpupd_gt100": 27, "total_amount_played": 15895968.42, "total_nti": 1640547.54, "wpupd": 253.19, "nti_per_location": 45570.76, "hold_pct": 10.3199, "nti_rank": 19, "wpupd_rank": 23, "npl_rank": 25, "avg_vgts_per_location": 5.81, "pct_market_locations": 0.4144, "pct_market_vgts": 0.4229, "pct_market_nti": 0.5483, "total_vgts": 209}, {"to_name": "Winner's Choice Gaming, LLC", "loc_count": 44, "loc_count_wpupd_gt100": 32, "total_amount_played": 14833722.63, "total_nti": 1600884.77, "wpupd": 195.6, "nti_per_location": 36383.74, "hold_pct": 10.7914, "nti_rank": 20, "wpupd_rank": 40, "npl_rank": 36, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.5064, "pct_market_vgts": 0.5343, "pct_market_nti": 0.5351, "total_vgts": 264}, {"to_name": "777 Gaming, LLC", "loc_count": 38, "loc_count_wpupd_gt100": 31, "total_amount_played": 14150388.95, "total_nti": 1513152.87, "wpupd": 222.88, "nti_per_location": 39819.81, "hold_pct": 10.6933, "nti_rank": 21, "wpupd_rank": 29, "npl_rank": 31, "avg_vgts_per_location": 5.76, "pct_market_locations": 0.4374, "pct_market_vgts": 0.4432, "pct_market_nti": 0.5057, "total_vgts": 219}, {"to_name": "Renville Gaming, LLC", "loc_count": 73, "loc_count_wpupd_gt100": 37, "total_amount_played": 15550305.95, "total_nti": 1445718.64, "wpupd": 123.69, "nti_per_location": 19804.36, "hold_pct": 9.2962, "nti_rank": 22, "wpupd_rank": 61, "npl_rank": 60, "avg_vgts_per_location": 5.16, "pct_market_locations": 0.8402, "pct_market_vgts": 0.7629, "pct_market_nti": 0.4832, "total_vgts": 377}, {"to_name": "Velasquez Gaming, LLC", "loc_count": 50, "loc_count_wpupd_gt100": 22, "total_amount_played": 11048742.33, "total_nti": 1015496.83, "wpupd": 121.33, "nti_per_location": 20309.94, "hold_pct": 9.191, "nti_rank": 23, "wpupd_rank": 62, "npl_rank": 59, "avg_vgts_per_location": 5.4, "pct_market_locations": 0.5755, "pct_market_vgts": 0.5464, "pct_market_nti": 0.3394, "total_vgts": 270}, {"to_name": "LS Gaming LLC", "loc_count": 21, "loc_count_wpupd_gt100": 16, "total_amount_played": 9200599.35, "total_nti": 971380.62, "wpupd": 250.69, "nti_per_location": 46256.22, "hold_pct": 10.5582, "nti_rank": 24, "wpupd_rank": 24, "npl_rank": 24, "avg_vgts_per_location": 5.95, "pct_market_locations": 0.2417, "pct_market_vgts": 0.253, "pct_market_nti": 0.3247, "total_vgts": 125}, {"to_name": "Illinois Video Slot Management Corp.", "loc_count": 18, "loc_count_wpupd_gt100": 16, "total_amount_played": 9861379.56, "total_nti": 931295.84, "wpupd": 286.1, "nti_per_location": 51738.66, "hold_pct": 9.4435, "nti_rank": 25, "wpupd_rank": 14, "npl_rank": 15, "avg_vgts_per_location": 5.83, "pct_market_locations": 0.2072, "pct_market_vgts": 0.2125, "pct_market_nti": 0.3113, "total_vgts": 105}, {"to_name": "Aces Up Gaming LLC", "loc_count": 9, "loc_count_wpupd_gt100": 9, "total_amount_played": 9936950.24, "total_nti": 925296.65, "wpupd": 552.75, "nti_per_location": 102810.74, "hold_pct": 9.3117, "nti_rank": 26, "wpupd_rank": 1, "npl_rank": 1, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.1036, "pct_market_vgts": 0.1093, "pct_market_nti": 0.3093, "total_vgts": 54}, {"to_name": "Great American Gaming, LLC", "loc_count": 12, "loc_count_wpupd_gt100": 10, "total_amount_played": 7821608.01, "total_nti": 726909.02, "wpupd": 349.98, "nti_per_location": 60575.75, "hold_pct": 9.2936, "nti_rank": 27, "wpupd_rank": 6, "npl_rank": 7, "avg_vgts_per_location": 5.58, "pct_market_locations": 0.1381, "pct_market_vgts": 0.1356, "pct_market_nti": 0.2429, "total_vgts": 67}, {"to_name": "AP Gaming LLC", "loc_count": 19, "loc_count_wpupd_gt100": 14, "total_amount_played": 7640781.94, "total_nti": 720368.79, "wpupd": 215.17, "nti_per_location": 37914.15, "hold_pct": 9.4282, "nti_rank": 28, "wpupd_rank": 33, "npl_rank": 33, "avg_vgts_per_location": 5.68, "pct_market_locations": 0.2187, "pct_market_vgts": 0.2186, "pct_market_nti": 0.2408, "total_vgts": 108}, {"to_name": "Illinois Gaming Entertainment LLC", "loc_count": 10, "loc_count_wpupd_gt100": 10, "total_amount_played": 7355533.08, "total_nti": 656470.47, "wpupd": 352.82, "nti_per_location": 65647.05, "hold_pct": 8.9218, "nti_rank": 29, "wpupd_rank": 5, "npl_rank": 5, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.1151, "pct_market_vgts": 0.1214, "pct_market_nti": 0.2194, "total_vgts": 60}, {"to_name": "Top Notch Entertainment, LLC", "loc_count": 9, "loc_count_wpupd_gt100": 8, "total_amount_played": 5937930.97, "total_nti": 601311.94, "wpupd": 373.0, "nti_per_location": 66812.44, "hold_pct": 10.1261, "nti_rank": 30, "wpupd_rank": 3, "npl_rank": 4, "avg_vgts_per_location": 5.78, "pct_market_locations": 0.1036, "pct_market_vgts": 0.1052, "pct_market_nti": 0.201, "total_vgts": 52}, {"to_name": "Springfield Gaming, LLC", "loc_count": 16, "loc_count_wpupd_gt100": 9, "total_amount_played": 5379879.75, "total_nti": 537541.51, "wpupd": 204.0, "nti_per_location": 33596.34, "hold_pct": 9.9915, "nti_rank": 31, "wpupd_rank": 36, "npl_rank": 40, "avg_vgts_per_location": 5.31, "pct_market_locations": 0.1842, "pct_market_vgts": 0.172, "pct_market_nti": 0.1797, "total_vgts": 85}, {"to_name": "Illinois Gaming and Coin-Op LLC", "loc_count": 10, "loc_count_wpupd_gt100": 9, "total_amount_played": 5662264.63, "total_nti": 483454.66, "wpupd": 263.95, "nti_per_location": 48345.47, "hold_pct": 8.526, "nti_rank": 32, "wpupd_rank": 20, "npl_rank": 20, "avg_vgts_per_location": 5.9, "pct_market_locations": 0.1151, "pct_market_vgts": 0.1194, "pct_market_nti": 0.1616, "total_vgts": 59}, {"to_name": "Game On Entertainment, LLC", "loc_count": 9, "loc_count_wpupd_gt100": 7, "total_amount_played": 4759984.14, "total_nti": 409164.13, "wpupd": 263.82, "nti_per_location": 45462.68, "hold_pct": 8.5908, "nti_rank": 33, "wpupd_rank": 21, "npl_rank": 26, "avg_vgts_per_location": 5.56, "pct_market_locations": 0.1036, "pct_market_vgts": 0.1012, "pct_market_nti": 0.1368, "total_vgts": 50}, {"to_name": "Mississippi Gaming and Amusements, LLC", "loc_count": 8, "loc_count_wpupd_gt100": 6, "total_amount_played": 5049073.63, "total_nti": 400549.05, "wpupd": 280.88, "nti_per_location": 50068.63, "hold_pct": 7.9328, "nti_rank": 34, "wpupd_rank": 15, "npl_rank": 17, "avg_vgts_per_location": 5.75, "pct_market_locations": 0.0921, "pct_market_vgts": 0.0931, "pct_market_nti": 0.1339, "total_vgts": 46}, {"to_name": "A1_Keshav Krupa LLC", "loc_count": 13, "loc_count_wpupd_gt100": 10, "total_amount_played": 3682597.15, "total_nti": 391654.92, "wpupd": 168.45, "nti_per_location": 30127.3, "hold_pct": 10.6353, "nti_rank": 35, "wpupd_rank": 46, "npl_rank": 47, "avg_vgts_per_location": 5.77, "pct_market_locations": 0.1496, "pct_market_vgts": 0.1518, "pct_market_nti": 0.1309, "total_vgts": 75}, {"to_name": "G.F.M. Gaming, LLC", "loc_count": 7, "loc_count_wpupd_gt100": 5, "total_amount_played": 4230455.96, "total_nti": 391435.44, "wpupd": 307.92, "nti_per_location": 55919.35, "hold_pct": 9.2512, "nti_rank": 36, "wpupd_rank": 11, "npl_rank": 12, "avg_vgts_per_location": 5.86, "pct_market_locations": 0.0806, "pct_market_vgts": 0.083, "pct_market_nti": 0.1308, "total_vgts": 41}, {"to_name": "Ashiq Gaming, LLC", "loc_count": 12, "loc_count_wpupd_gt100": 7, "total_amount_played": 4011005.55, "total_nti": 374003.82, "wpupd": 182.8, "nti_per_location": 31166.99, "hold_pct": 9.3244, "nti_rank": 37, "wpupd_rank": 43, "npl_rank": 43, "avg_vgts_per_location": 5.5, "pct_market_locations": 0.1381, "pct_market_vgts": 0.1336, "pct_market_nti": 0.125, "total_vgts": 66}, {"to_name": "Jaguar Gaming, LLC", "loc_count": 14, "loc_count_wpupd_gt100": 8, "total_amount_played": 3258989.54, "total_nti": 350685.54, "wpupd": 134.67, "nti_per_location": 25048.97, "hold_pct": 10.7602, "nti_rank": 38, "wpupd_rank": 54, "npl_rank": 53, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.1611, "pct_market_vgts": 0.17, "pct_market_nti": 0.1172, "total_vgts": 84}, {"to_name": "Jackpot Video Gaming Inc.", "loc_count": 5, "loc_count_wpupd_gt100": 5, "total_amount_played": 4070700.6, "total_nti": 341482.19, "wpupd": 367.07, "nti_per_location": 68296.44, "hold_pct": 8.3862, "nti_rank": 39, "wpupd_rank": 4, "npl_rank": 3, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.0576, "pct_market_vgts": 0.0607, "pct_market_nti": 0.1141, "total_vgts": 30}, {"to_name": "Rise2Shine Gaming LLC", "loc_count": 9, "loc_count_wpupd_gt100": 7, "total_amount_played": 3310370.39, "total_nti": 336846.54, "wpupd": 201.22, "nti_per_location": 37427.39, "hold_pct": 10.1755, "nti_rank": 40, "wpupd_rank": 37, "npl_rank": 34, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.1036, "pct_market_vgts": 0.1093, "pct_market_nti": 0.1126, "total_vgts": 54}, {"to_name": "Arktyk Gaming Solutions LLC", "loc_count": 11, "loc_count_wpupd_gt100": 7, "total_amount_played": 3442169.6, "total_nti": 312948.27, "wpupd": 160.23, "nti_per_location": 28449.84, "hold_pct": 9.0912, "nti_rank": 41, "wpupd_rank": 49, "npl_rank": 50, "avg_vgts_per_location": 5.73, "pct_market_locations": 0.1266, "pct_market_vgts": 0.1275, "pct_market_nti": 0.1046, "total_vgts": 63}, {"to_name": "Great Lakes Vending, Corporation", "loc_count": 8, "loc_count_wpupd_gt100": 4, "total_amount_played": 3087472.41, "total_nti": 295949.59, "wpupd": 207.14, "nti_per_location": 36993.7, "hold_pct": 9.5672, "nti_rank": 42, "wpupd_rank": 35, "npl_rank": 35, "avg_vgts_per_location": 5.75, "pct_market_locations": 0.0921, "pct_market_vgts": 0.0931, "pct_market_nti": 0.0989, "total_vgts": 46}, {"to_name": "Pocket Aces Gaming LLC", "loc_count": 8, "loc_count_wpupd_gt100": 6, "total_amount_played": 2992166.35, "total_nti": 290165.95, "wpupd": 208.0, "nti_per_location": 36270.74, "hold_pct": 9.6975, "nti_rank": 43, "wpupd_rank": 34, "npl_rank": 37, "avg_vgts_per_location": 5.62, "pct_market_locations": 0.0921, "pct_market_vgts": 0.0911, "pct_market_nti": 0.097, "total_vgts": 45}, {"to_name": "Sparrow Gaming, Inc.", "loc_count": 7, "loc_count_wpupd_gt100": 7, "total_amount_played": 3555623.97, "total_nti": 282917.33, "wpupd": 217.13, "nti_per_location": 40416.76, "hold_pct": 7.9509, "nti_rank": 44, "wpupd_rank": 32, "npl_rank": 29, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.0806, "pct_market_vgts": 0.085, "pct_market_nti": 0.0946, "total_vgts": 42}, {"to_name": "Winners Depot, LLC", "loc_count": 9, "loc_count_wpupd_gt100": 6, "total_amount_played": 3239538.21, "total_nti": 273445.57, "wpupd": 163.35, "nti_per_location": 30382.84, "hold_pct": 8.4409, "nti_rank": 45, "wpupd_rank": 47, "npl_rank": 46, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.1036, "pct_market_vgts": 0.1093, "pct_market_nti": 0.0914, "total_vgts": 54}, {"to_name": "Ultra Gaming Systems, LLC", "loc_count": 5, "loc_count_wpupd_gt100": 5, "total_amount_played": 2637801.73, "total_nti": 242595.84, "wpupd": 230.18, "nti_per_location": 48519.17, "hold_pct": 9.1976, "nti_rank": 46, "wpupd_rank": 27, "npl_rank": 19, "avg_vgts_per_location": 6.8, "pct_market_locations": 0.0576, "pct_market_vgts": 0.0688, "pct_market_nti": 0.0811, "total_vgts": 34}, {"to_name": "Kings Entertainment LLC", "loc_count": 5, "loc_count_wpupd_gt100": 5, "total_amount_played": 2838844.79, "total_nti": 232882.48, "wpupd": 268.3, "nti_per_location": 46576.5, "hold_pct": 8.2034, "nti_rank": 47, "wpupd_rank": 19, "npl_rank": 23, "avg_vgts_per_location": 5.6, "pct_market_locations": 0.0576, "pct_market_vgts": 0.0567, "pct_market_nti": 0.0778, "total_vgts": 28}, {"to_name": "Traayo Gaming LLC", "loc_count": 3, "loc_count_wpupd_gt100": 3, "total_amount_played": 1670451.88, "total_nti": 175047.35, "wpupd": 313.67, "nti_per_location": 58349.12, "hold_pct": 10.478, "nti_rank": 48, "wpupd_rank": 8, "npl_rank": 9, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.0345, "pct_market_vgts": 0.0364, "pct_market_nti": 0.0585, "total_vgts": 18}, {"to_name": "United Gaming Operator LLC", "loc_count": 3, "loc_count_wpupd_gt100": 1, "total_amount_played": 1770444.67, "total_nti": 172058.63, "wpupd": 277.42, "nti_per_location": 57352.88, "hold_pct": 9.7152, "nti_rank": 49, "wpupd_rank": 16, "npl_rank": 10, "avg_vgts_per_location": 6.67, "pct_market_locations": 0.0345, "pct_market_vgts": 0.0405, "pct_market_nti": 0.0575, "total_vgts": 20}, {"to_name": "Maya Gaming LLC", "loc_count": 8, "loc_count_wpupd_gt100": 3, "total_amount_played": 1465153.01, "total_nti": 147527.7, "wpupd": 113.31, "nti_per_location": 18440.96, "hold_pct": 10.0691, "nti_rank": 50, "wpupd_rank": 63, "npl_rank": 62, "avg_vgts_per_location": 5.25, "pct_market_locations": 0.0921, "pct_market_vgts": 0.085, "pct_market_nti": 0.0493, "total_vgts": 42}, {"to_name": "Quad Gaming, Inc.", "loc_count": 4, "loc_count_wpupd_gt100": 2, "total_amount_played": 1454243.84, "total_nti": 143117.54, "wpupd": 200.73, "nti_per_location": 35779.38, "hold_pct": 9.8414, "nti_rank": 51, "wpupd_rank": 38, "npl_rank": 38, "avg_vgts_per_location": 5.75, "pct_market_locations": 0.046, "pct_market_vgts": 0.0465, "pct_market_nti": 0.0478, "total_vgts": 23}, {"to_name": "Lucky Lady, LLC", "loc_count": 4, "loc_count_wpupd_gt100": 2, "total_amount_played": 1218959.6, "total_nti": 115008.85, "wpupd": 154.58, "nti_per_location": 28752.21, "hold_pct": 9.435, "nti_rank": 52, "wpupd_rank": 50, "npl_rank": 49, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.046, "pct_market_vgts": 0.0486, "pct_market_nti": 0.0384, "total_vgts": 24}, {"to_name": "Dragonfly Gaming, Inc.", "loc_count": 2, "loc_count_wpupd_gt100": 2, "total_amount_played": 1266074.66, "total_nti": 108576.13, "wpupd": 291.87, "nti_per_location": 54288.07, "hold_pct": 8.5758, "nti_rank": 53, "wpupd_rank": 13, "npl_rank": 14, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.023, "pct_market_vgts": 0.0243, "pct_market_nti": 0.0363, "total_vgts": 12}, {"to_name": "Lakeshore Gaming LLC", "loc_count": 2, "loc_count_wpupd_gt100": 2, "total_amount_played": 1214065.74, "total_nti": 101156.54, "wpupd": 271.93, "nti_per_location": 50578.27, "hold_pct": 8.332, "nti_rank": 54, "wpupd_rank": 17, "npl_rank": 16, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.023, "pct_market_vgts": 0.0243, "pct_market_nti": 0.0338, "total_vgts": 12}, {"to_name": "WAMI Gaming, LLC", "loc_count": 5, "loc_count_wpupd_gt100": 2, "total_amount_played": 917155.79, "total_nti": 93440.35, "wpupd": 125.59, "nti_per_location": 18688.07, "hold_pct": 10.188, "nti_rank": 55, "wpupd_rank": 58, "npl_rank": 61, "avg_vgts_per_location": 4.8, "pct_market_locations": 0.0576, "pct_market_vgts": 0.0486, "pct_market_nti": 0.0312, "total_vgts": 24}, {"to_name": "Chi-Lanta Holdings LLC", "loc_count": 3, "loc_count_wpupd_gt100": 2, "total_amount_played": 641951.73, "total_nti": 62156.05, "wpupd": 125.31, "nti_per_location": 20718.68, "hold_pct": 9.6824, "nti_rank": 56, "wpupd_rank": 59, "npl_rank": 58, "avg_vgts_per_location": 5.33, "pct_market_locations": 0.0345, "pct_market_vgts": 0.0324, "pct_market_nti": 0.0208, "total_vgts": 16}, {"to_name": "Midwest Amusement & Gaming, Inc.", "loc_count": 2, "loc_count_wpupd_gt100": 2, "total_amount_played": 711991.77, "total_nti": 59744.37, "wpupd": 160.6, "nti_per_location": 29872.18, "hold_pct": 8.3912, "nti_rank": 57, "wpupd_rank": 48, "npl_rank": 48, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.023, "pct_market_vgts": 0.0243, "pct_market_nti": 0.02, "total_vgts": 12}, {"to_name": "Da Route LLC", "loc_count": 2, "loc_count_wpupd_gt100": 2, "total_amount_played": 701662.57, "total_nti": 56478.02, "wpupd": 151.82, "nti_per_location": 28239.01, "hold_pct": 8.0492, "nti_rank": 58, "wpupd_rank": 51, "npl_rank": 51, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.023, "pct_market_vgts": 0.0243, "pct_market_nti": 0.0189, "total_vgts": 12}, {"to_name": "4K Diamond Enterprises LLC", "loc_count": 2, "loc_count_wpupd_gt100": 1, "total_amount_played": 454957.97, "total_nti": 49310.53, "wpupd": 132.56, "nti_per_location": 24655.26, "hold_pct": 10.8385, "nti_rank": 59, "wpupd_rank": 56, "npl_rank": 54, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.023, "pct_market_vgts": 0.0243, "pct_market_nti": 0.0165, "total_vgts": 12}, {"to_name": "Dearborn Gaming, LLC", "loc_count": 1, "loc_count_wpupd_gt100": 1, "total_amount_played": 587162.72, "total_nti": 47468.97, "wpupd": 254.72, "nti_per_location": 47468.97, "hold_pct": 8.069, "nti_rank": 60, "wpupd_rank": 22, "npl_rank": 21, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.0115, "pct_market_vgts": 0.0121, "pct_market_nti": 0.0159, "total_vgts": 6}, {"to_name": "Outplay Entertainment, LLC", "loc_count": 2, "loc_count_wpupd_gt100": 1, "total_amount_played": 523106.61, "total_nti": 46042.33, "wpupd": 123.77, "nti_per_location": 23021.17, "hold_pct": 8.8017, "nti_rank": 61, "wpupd_rank": 60, "npl_rank": 56, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.023, "pct_market_vgts": 0.0243, "pct_market_nti": 0.0154, "total_vgts": 12}, {"to_name": "Compact Disc Amusements, Limited", "loc_count": 1, "loc_count_wpupd_gt100": 1, "total_amount_played": 431357.45, "total_nti": 41471.14, "wpupd": 222.96, "nti_per_location": 41471.14, "hold_pct": 9.6141, "nti_rank": 62, "wpupd_rank": 28, "npl_rank": 28, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.0115, "pct_market_vgts": 0.0121, "pct_market_nti": 0.0139, "total_vgts": 6}, {"to_name": "Game Gurus, LLC", "loc_count": 1, "loc_count_wpupd_gt100": 1, "total_amount_played": 375045.88, "total_nti": 27901.13, "wpupd": 150.01, "nti_per_location": 27901.13, "hold_pct": 7.4394, "nti_rank": 63, "wpupd_rank": 52, "npl_rank": 52, "avg_vgts_per_location": 6.0, "pct_market_locations": 0.0115, "pct_market_vgts": 0.0121, "pct_market_nti": 0.0093, "total_vgts": 6}], "market": {"locs": 8688, "vgts": 49415, "nti": 299201192.31}};
+
+const UNLINKED_COUNT = 323;
+
+const UNLINKED_SAMPLE = [
+  {muni:"Aledo",   name:"Mercer County Post No.1571, Veterans of Foreign Wars of The United States", lic:"120910348"},
+  {muni:"Norridge",name:"VILLA NAPOLI L.T.D.",                                                         lic:"150702015"},
+];
+
+let data = RAW.records.slice();
+let sortCol = 'nti_rank';
+let sortAsc = true;
+
+function fmt$(n){ return n>=1e6 ? '$'+( n/1e6).toFixed(2)+'M' : '$'+(n/1e3).toFixed(1)+'K'; }
+function fmtN(n){ return n.toLocaleString(undefined,{maximumFractionDigits:2}); }
+function rankClass(r){
+  if(r===1) return 'rank rank-1';
+  if(r===2) return 'rank rank-2';
+  if(r===3) return 'rank rank-3';
+  if(r<=10) return 'rank rank-top';
+  return 'rank';
+}
+function pctBar(pct, max){
+  const w = Math.min(100, (pct/max)*100);
+  return `<div class="pct-bar-wrap"><span>${pct.toFixed(2)}%</span><div class="pct-bar"><div class="pct-bar-fill" style="width:${w}%"></div></div></div>`;
+}
+
+function sortBy(col){
+  if(sortCol===col){ sortAsc=!sortAsc; }
+  else { sortCol=col; sortAsc = (col==='nti_rank'||col==='wpupd_rank'||col==='npl_rank'||col==='to_name'); }
+  renderTable();
+}
+
+function renderTable(){
+  const q = document.getElementById('search').value.toLowerCase();
+  let rows = data.filter(r => r.to_name.toLowerCase().includes(q));
+
+  rows.sort((a,b)=>{
+    let av=a[sortCol], bv=b[sortCol];
+    if(typeof av==='string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return sortAsc ? av-bv : bv-av;
+  });
+
+  const maxLocPct = Math.max(...data.map(d=>d.pct_market_locations));
+  const maxVgtPct = Math.max(...data.map(d=>d.pct_market_vgts));
+  const maxNtiPct = Math.max(...data.map(d=>d.pct_market_nti));
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = rows.map(r=>{
+    const isLL = r.to_name.includes('Lucky Lincoln');
+    const cls = isLL ? 'lucky-lincoln' : '';
+    return `<tr class="${cls}">
+      <td>${isLL?'⭐ ':''}<strong>${r.to_name}</strong></td>
+      <td>${r.loc_count.toLocaleString()}</td>
+      <td>${r.loc_count_wpupd_gt100.toLocaleString()}</td>
+      <td>${fmt$(r.total_amount_played)}</td>
+      <td>${fmt$(r.total_nti)}</td>
+      <td>${r.wpupd.toFixed(2)}</td>
+      <td>${fmt$(r.nti_per_location)}</td>
+      <td>${r.hold_pct.toFixed(2)}%</td>
+      <td>${r.avg_vgts_per_location.toFixed(2)}</td>
+      <td class="${rankClass(r.nti_rank)}">#${r.nti_rank}</td>
+      <td class="${rankClass(r.wpupd_rank)}">#${r.wpupd_rank}</td>
+      <td class="${rankClass(r.npl_rank)}">#${r.npl_rank}</td>
+      <td>${pctBar(r.pct_market_locations, maxLocPct)}</td>
+      <td>${pctBar(r.pct_market_vgts, maxVgtPct)}</td>
+      <td>${pctBar(r.pct_market_nti, maxNtiPct)}</td>
+    </tr>`;
+  }).join('');
+
+  // Update sort arrows
+  document.querySelectorAll('thead th').forEach(th=>{
+    const col = th.dataset.col;
+    const arrow = th.querySelector('.sort-arrow');
+    if(!arrow) return;
+    if(col===sortCol){ th.classList.add('sorted'); arrow.textContent = sortAsc?'↑':'↓'; }
+    else { th.classList.remove('sorted'); arrow.textContent='↕'; }
+  });
+}
+
+function init(){
+  const m = RAW.market;
+  document.getElementById('mkt-locs').textContent = m.locs.toLocaleString();
+  document.getElementById('mkt-vgts').textContent = m.vgts.toLocaleString();
+  document.getElementById('mkt-nti').textContent = '$'+(m.nti/1e6).toFixed(1)+'M';
+  document.getElementById('to-count').textContent = RAW.records.length;
+
+  const ll = RAW.records.find(r=>r.to_name.includes('Lucky Lincoln'));
+  if(ll){
+    document.getElementById('ll-nti-rank').textContent = '#'+ll.nti_rank+' of '+RAW.records.length;
+    document.getElementById('ll-wpupd-rank').textContent = '#'+ll.wpupd_rank+' of '+RAW.records.length;
+    document.getElementById('ll-npl-rank').textContent = '#'+ll.npl_rank+' of '+RAW.records.length;
+    document.getElementById('ll-nti').textContent = fmt$(ll.total_nti);
+    document.getElementById('ll-wpupd').textContent = ll.wpupd.toFixed(2);
+    document.getElementById('ll-locs').textContent = ll.loc_count;
+  }
+
+  // Unlinked modal body
+  const ub = document.getElementById('unlinked-body');
+  ub.innerHTML = UNLINKED_SAMPLE.map(r=>`<tr><td style="padding:5px 8px;border-bottom:1px solid #eee">${r.muni}</td><td style="padding:5px 8px;border-bottom:1px solid #eee">${r.name}</td><td style="padding:5px 8px;border-bottom:1px solid #eee">${r.lic}</td></tr>`).join('');
+
+  renderTable();
+}
+
+init();
+
+const SUMMARY = {"month_order": ["January 2026", "February 2026", "March 2026", "April 2026", "May 2026"], "market_ntis": [263092659.85, 268453253.09, 302769540.77, 294645099.55, 299201192.31], "top10": [{"to_name": "J&J Ventures Gaming, LLC", "months": {"January 2026": {"nti": 79205632.47, "pct_mkt_nti": 30.1056, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 80941325.04, "pct_mkt_nti": 30.151, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 90101208.18, "pct_mkt_nti": 29.759, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 87982274.37, "pct_mkt_nti": 29.8604, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 89382315.87, "pct_mkt_nti": 29.8736, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Accel Entertainment Gaming, LLC", "months": {"January 2026": {"nti": 73303247.09, "pct_mkt_nti": 27.8621, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 74936179.72, "pct_mkt_nti": 27.9141, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 84759365.12, "pct_mkt_nti": 27.9947, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 82501371.74, "pct_mkt_nti": 28.0003, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 83175509.05, "pct_mkt_nti": 27.7992, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Gold Rush Amusements, Inc.", "months": {"January 2026": {"nti": 24766989.63, "pct_mkt_nti": 9.4138, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 25361502.19, "pct_mkt_nti": 9.4473, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 28599971.18, "pct_mkt_nti": 9.4461, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 28008428.28, "pct_mkt_nti": 9.5058, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 28327971.83, "pct_mkt_nti": 9.4679, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Illinois Gaming Investors LLC", "months": {"January 2026": {"nti": 11018118.43, "pct_mkt_nti": 4.1879, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 10932497.04, "pct_mkt_nti": 4.0724, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 12755558.98, "pct_mkt_nti": 4.213, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 12038851.0, "pct_mkt_nti": 4.0859, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 12307616.58, "pct_mkt_nti": 4.1135, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Lucky Lincoln Gaming, LLC", "months": {"January 2026": {"nti": 8646089.3, "pct_mkt_nti": 3.2863, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 8942881.64, "pct_mkt_nti": 3.3313, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 10160700.98, "pct_mkt_nti": 3.3559, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 9919811.64, "pct_mkt_nti": 3.3667, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 9926100.25, "pct_mkt_nti": 3.3175, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Eureka Entertainment, LLC", "months": {"January 2026": {"nti": 8942267.76, "pct_mkt_nti": 3.3989, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 8911654.75, "pct_mkt_nti": 3.3196, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 10135446.92, "pct_mkt_nti": 3.3476, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 9754719.26, "pct_mkt_nti": 3.3107, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 9895818.59, "pct_mkt_nti": 3.3074, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Midwest SRO, LLC", "months": {"January 2026": {"nti": 8809937.15, "pct_mkt_nti": 3.3486, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 8807794.34, "pct_mkt_nti": 3.2809, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 10018919.68, "pct_mkt_nti": 3.3091, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 9573048.65, "pct_mkt_nti": 3.249, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 9597119.92, "pct_mkt_nti": 3.2076, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Midwest Electronics Gaming, LLC", "months": {"January 2026": {"nti": 8209145.73, "pct_mkt_nti": 3.1202, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 8262322.48, "pct_mkt_nti": 3.0778, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 9418472.23, "pct_mkt_nti": 3.1108, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 9270116.96, "pct_mkt_nti": 3.1462, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 9564829.01, "pct_mkt_nti": 3.1968, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Lattner Entertainment Group Illinois, LLC", "months": {"January 2026": {"nti": 3586800.83, "pct_mkt_nti": 1.3633, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 3555435.39, "pct_mkt_nti": 1.3244, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 4114588.52, "pct_mkt_nti": 1.359, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 3921097.58, "pct_mkt_nti": 1.3308, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 4141133.97, "pct_mkt_nti": 1.3841, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}, {"to_name": "Lucky Street Gaming LLC", "months": {"January 2026": {"nti": 3073848.37, "pct_mkt_nti": 1.1684, "market_mom_pct": null, "market_nti": 263092659.85}, "February 2026": {"nti": 3198720.03, "pct_mkt_nti": 1.1915, "market_mom_pct": 2.04, "market_nti": 268453253.09}, "March 2026": {"nti": 3747284.81, "pct_mkt_nti": 1.2377, "market_mom_pct": 12.78, "market_nti": 302769540.77}, "April 2026": {"nti": 3700933.72, "pct_mkt_nti": 1.2561, "market_mom_pct": -2.68, "market_nti": 294645099.55}, "May 2026": {"nti": 3719771.72, "pct_mkt_nti": 1.2432, "market_mom_pct": 1.55, "market_nti": 299201192.31}}}]};
+
+// 10-color palette; index 4 = Lucky Lincoln gold
+const TO_COLORS = [
+  '#2196F3', // J&J Ventures - blue
+  '#4CAF50', // Accel - green
+  '#FF5722', // Gold Rush - deep orange
+  '#9C27B0', // IL Gaming Investors - purple
+  '#F5C518', // Lucky Lincoln - gold
+  '#009688', // Eureka - teal
+  '#E91E63', // Midwest SRO - pink
+  '#FF9800', // Midwest Electronics - amber
+  '#607D8B', // Lattner - blue-grey
+  '#795548', // Lucky Street - brown
+];
+
+let summaryBuilt = false;
+const chartInstances = {};
+
+function buildSummary() {
+  if (summaryBuilt) return;
+  summaryBuilt = true;
+
+  const months = SUMMARY.month_order;
+  const monthNum = {"January":"01","February":"02","March":"03","April":"04","May":"05","June":"06","July":"07","August":"08","September":"09","October":"10","November":"11","December":"12"};
+  const labels = months.map(m => { const [mon, yr] = m.split(' '); return yr + '-' + monthNum[mon]; });
+  const top10  = SUMMARY.top10;
+
+  function makeDatasets(field) {
+    return top10.map((to, i) => {
+      const isLL = to.to_name.includes('Lucky Lincoln');
+      return {
+        label: to.to_name,
+        data: months.map(m => {
+          const v = to.months[m][field];
+          return v === null ? null : v;
+        }),
+        borderColor: TO_COLORS[i],
+        backgroundColor: TO_COLORS[i] + '22',
+        borderWidth: isLL ? 3 : 1.8,
+        pointRadius: isLL ? 5 : 3.5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: false,
+        spanGaps: false,
+        borderDash: [],
+      };
+    });
+  }
+
+  const commonOpts = (yLabel, fmt) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          boxWidth: 12,
+          boxHeight: 12,
+          padding: 16,
+          font: { size: 11 },
+          usePointStyle: true,
+          pointStyle: 'circle',
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const v = ctx.parsed.y;
+            if (v === null) return null;
+            return ' ' + ctx.dataset.label + ': ' + fmt(v);
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 11 } }
+      },
+      y: {
+        title: { display: true, text: yLabel, font: { size: 11 }, color: '#666' },
+        ticks: { font: { size: 11 }, callback: v => fmt(v) },
+        grid: { color: '#f0f0f0' }
+      }
+    }
+  });
+
+  // Chart 0: Lucky Lincoln Gaming dual-axis
+  const llData = SUMMARY.top10.find(t => t.to_name.includes('Lucky Lincoln'));
+  chartInstances.ll = new Chart(document.getElementById('chart-ll'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total NTI',
+          data: months.map(m => llData.months[m].nti),
+          borderColor: '#F5C518',
+          backgroundColor: '#F5C51822',
+          borderWidth: 2.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.3,
+          fill: true,
+          yAxisID: 'yNTI',
+        },
+        {
+          label: '% Market NTI',
+          data: months.map(m => llData.months[m].pct_mkt_nti),
+          borderColor: '#0f3460',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.3,
+          fill: false,
+          borderDash: [6, 3],
+          yAxisID: 'yPct',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, boxHeight: 12, padding: 16, font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.yAxisID === 'yNTI') return ' Total NTI: $' + (ctx.parsed.y/1e6).toFixed(2) + 'M';
+              return ' % Market NTI: ' + ctx.parsed.y.toFixed(2) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        yNTI: {
+          type: 'linear', position: 'left',
+          title: { display: true, text: 'Total NTI ($M)', font: { size: 11 }, color: '#F5C518' },
+          ticks: { font: { size: 11 }, color: '#c8a200', callback: v => '$' + (v/1e6).toFixed(1) + 'M' },
+          grid: { color: '#f0f0f0' }
+        },
+        yPct: {
+          type: 'linear', position: 'right',
+          title: { display: true, text: '% Market NTI', font: { size: 11 }, color: '#0f3460' },
+          ticks: { font: { size: 11 }, color: '#0f3460', callback: v => v.toFixed(2) + '%' },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+
+  // Chart 1: Total NTI
+  chartInstances.nti = new Chart(document.getElementById('chart-nti'), {
+    type: 'line',
+    data: { labels, datasets: makeDatasets('nti') },
+    options: commonOpts('NTI ($M)', v => '$' + (v/1e6).toFixed(2) + 'M')
+  });
+
+  // Chart 2: % Market NTI
+  chartInstances.pct = new Chart(document.getElementById('chart-pct'), {
+    type: 'line',
+    data: { labels, datasets: makeDatasets('pct_mkt_nti') },
+    options: commonOpts('% Market NTI', v => v.toFixed(2) + '%')
+  });
+
+  // Chart 3: Total Market NTI
+  chartInstances.mkt = new Chart(document.getElementById('chart-mkt'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total Market NTI',
+        data: SUMMARY.market_ntis,
+        borderColor: '#0f3460',
+        backgroundColor: '#0f346022',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: commonOpts('Market NTI ($M)', v => '$' + (v/1e6).toFixed(1) + 'M')
+  });
+
+  // Chart 4: Market MoM %  — single line showing market-level change
+  // All TOs share the same market_mom_pct so just plot one series + shade pos/neg
+  const momLabels = labels.slice(1); // first month has no MoM
+  const momData   = months.slice(1).map(m => top10[0].months[m].market_mom_pct);
+
+  chartInstances.mom = new Chart(document.getElementById('chart-mom'), {
+    type: 'bar',
+    data: {
+      labels: momLabels,
+      datasets: [{
+        label: 'Market MoM NTI Change %',
+        data: momData,
+        backgroundColor: momData.map(v => v >= 0 ? '#4CAF5099' : '#F4433699'),
+        borderColor:     momData.map(v => v >= 0 ? '#4CAF50' : '#F44336'),
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + (ctx.parsed.y > 0 ? '+' : '') + ctx.parsed.y.toFixed(2) + '%'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          title: { display: true, text: 'MoM Change (%)', font: { size: 11 }, color: '#666' },
+          ticks: { font: { size: 11 }, callback: v => (v > 0 ? '+' : '') + v.toFixed(1) + '%' },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    }
+  });
+}
+
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(name === 'master' ? 'master' : 'summary')) b.classList.add('active');
+  });
+  if (name === 'summary') buildSummary();
+}
+
+</script>
+</body>
+</html>
